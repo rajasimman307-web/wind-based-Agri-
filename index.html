@@ -11,6 +11,7 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -32,7 +33,7 @@
 
         /* Main Container */
         .dashboard {
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
         }
 
@@ -86,6 +87,11 @@
             color: #155724;
         }
 
+        .badge.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         .badge.mode {
             background: #cce5ff;
             color: #004085;
@@ -94,6 +100,68 @@
         .badge.motor {
             background: #fff3cd;
             color: #856404;
+        }
+
+        .badge.data {
+            background: #e2d5f1;
+            color: #553c9a;
+        }
+
+        /* Connection Test Section */
+        .connection-test {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 15px 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .test-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .test-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .test-btn.secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .test-result {
+            font-size: 14px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
         }
 
         /* Cards Grid */
@@ -180,7 +248,7 @@
         /* Charts Container */
         .charts-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
             gap: 25px;
             margin-bottom: 25px;
         }
@@ -191,6 +259,9 @@
             padding: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
+            height: 400px;
+            display: flex;
+            flex-direction: column;
         }
 
         .chart-title {
@@ -201,10 +272,24 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-shrink: 0;
         }
 
         .chart-title i {
             color: #667eea;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+            width: 100%;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 300px;
         }
 
         /* Control Panel */
@@ -402,6 +487,10 @@
                 grid-template-columns: 1fr;
             }
             
+            .chart-card {
+                height: 350px;
+            }
+            
             .header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -427,18 +516,40 @@
                 <p>Wind-Based Smart Agriculture Monitoring System</p>
             </div>
             <div class="status-badge">
-                <div class="badge online">
+                <div class="badge online" id="connectionBadge">
                     <i class="fas fa-circle" style="color: #28a745; font-size: 10px;"></i>
-                    System Online
+                    Connecting...
                 </div>
                 <div class="badge mode" id="modeBadge">
                     <i class="fas fa-robot"></i>
-                    Mode: AUTO
+                    Mode: --
                 </div>
                 <div class="badge motor" id="motorBadge">
                     <i class="fas fa-motor"></i>
-                    Motor: OFF
+                    Motor: --
                 </div>
+                <div class="badge data" id="dataBadge">
+                    <i class="fas fa-database"></i>
+                    Data: --
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Test Section -->
+        <div class="connection-test">
+            <div class="test-buttons">
+                <button class="test-btn primary" onclick="testFirebaseConnection()">
+                    <i class="fas fa-plug"></i> Test Connection
+                </button>
+                <button class="test-btn secondary" onclick="writeTestData()">
+                    <i class="fas fa-pen"></i> Write Test Data
+                </button>
+                <button class="test-btn secondary" onclick="readAllData()">
+                    <i class="fas fa-eye"></i> Read All Data
+                </button>
+            </div>
+            <div class="test-result" id="testResult">
+                <i class="fas fa-info-circle"></i> Ready to test connection
             </div>
         </div>
 
@@ -509,21 +620,25 @@
             </div>
         </div>
 
-        <!-- Charts -->
+        <!-- Charts - Auto-fit to page -->
         <div class="charts-container">
             <div class="chart-card">
                 <div class="chart-title">
                     <i class="fas fa-chart-line"></i>
                     Temperature & Humidity Trends
                 </div>
-                <canvas id="tempHumChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="tempHumChart"></canvas>
+                </div>
             </div>
             <div class="chart-card">
                 <div class="chart-title">
                     <i class="fas fa-chart-bar"></i>
                     Soil & Rain Levels
                 </div>
-                <canvas id="soilRainChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="soilRainChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -532,7 +647,7 @@
             <div class="control-header">
                 <h3><i class="fas fa-sliders-h" style="margin-right: 10px;"></i>Control Panel</h3>
                 <div class="mode-selector">
-                    <button class="mode-btn active" onclick="setMode('AUTO')" id="autoBtn">AUTO</button>
+                    <button class="mode-btn" onclick="setMode('AUTO')" id="autoBtn">AUTO</button>
                     <button class="mode-btn" onclick="setMode('MANUAL')" id="manualBtn">MANUAL</button>
                 </div>
             </div>
@@ -541,8 +656,8 @@
                     <input type="checkbox" id="motorToggle" onchange="toggleMotor(this.checked)">
                     <span class="toggle-slider"></span>
                 </div>
-                <div class="motor-status" id="motorStatus">Motor is OFF</div>
-                <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px;">(Auto mode - Controlled by system)</div>
+                <div class="motor-status" id="motorStatus">Motor is --</div>
+                <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px;">(Loading...)</div>
             </div>
         </div>
 
@@ -559,20 +674,34 @@
     </div>
 
     <script>
-        // Firebase Configuration
+        // Firebase Configuration - Using your actual config
         const firebaseConfig = {
             apiKey: "AIzaSyBZw1mJHC3J20VOSy1wTkO83c65o9-fqE4",
             authDomain: "wind-based-agri.firebaseapp.com",
             databaseURL: "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "wind-based-agri",
             storageBucket: "wind-based-agri.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abc123def456"
+            messagingSenderId: "1097756861058",
+            appId: "1:1097756861058:web:5bb66f96e118f7a81a28e3"
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        let database;
+        let firebaseInitialized = false;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            firebaseInitialized = true;
+            console.log('Firebase initialized successfully');
+            document.getElementById('connectionBadge').innerHTML = '<i class="fas fa-circle" style="color: #28a745; font-size: 10px;"></i> Connected';
+            addLogEntry('Firebase connected successfully', 'success');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            document.getElementById('connectionBadge').innerHTML = '<i class="fas fa-circle" style="color: #dc3545; font-size: 10px;"></i> Connection Failed';
+            document.getElementById('connectionBadge').className = 'badge offline';
+            addLogEntry('Firebase connection failed: ' + error.message, 'warning');
+        }
 
         // Chart initialization
         let tempHumChart, soilRainChart;
@@ -583,7 +712,7 @@
         let soilData = [];
         let rainData = [];
 
-        // Initialize charts
+        // Initialize charts with auto-sizing
         function initCharts() {
             const ctx1 = document.getElementById('tempHumChart').getContext('2d');
             tempHumChart = new Chart(ctx1, {
@@ -597,7 +726,9 @@
                             borderColor: '#dc2626',
                             backgroundColor: 'rgba(220, 38, 38, 0.1)',
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
                         },
                         {
                             label: 'Humidity (%)',
@@ -605,25 +736,55 @@
                             borderColor: '#2563eb',
                             backgroundColor: 'rgba(37, 99, 235, 0.1)',
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: false,
+                    animation: {
+                        duration: 500
+                    },
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top'
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                maxTicksLimit: 8
+                            }
                         }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
                     }
                 }
             });
@@ -640,7 +801,9 @@
                             borderColor: '#16a34a',
                             backgroundColor: 'rgba(22, 163, 74, 0.1)',
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
                         },
                         {
                             label: 'Rain Level (%)',
@@ -648,27 +811,63 @@
                             borderColor: '#0891b2',
                             backgroundColor: 'rgba(8, 145, 178, 0.1)',
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: false,
+                    animation: {
+                        duration: 500
+                    },
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top'
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                maxTicksLimit: 8
+                            }
                         }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
                     }
                 }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (tempHumChart) tempHumChart.resize();
+                if (soilRainChart) soilRainChart.resize();
             });
         }
 
@@ -710,6 +909,8 @@
 
         // Update UI with sensor data
         function updateUI(data) {
+            console.log('Updating UI with data:', data);
+            
             // Update cards
             document.getElementById('tempValue').innerHTML = `${data.temperature?.toFixed(1) || '--'}<span class="card-unit">°C</span>`;
             document.getElementById('humValue').innerHTML = `${data.humidity?.toFixed(1) || '--'}<span class="card-unit">%</span>`;
@@ -725,23 +926,24 @@
             // Update badges
             document.getElementById('modeBadge').innerHTML = `<i class="fas fa-robot"></i>Mode: ${data.mode || 'AUTO'}`;
             document.getElementById('motorBadge').innerHTML = `<i class="fas fa-motor"></i>Motor: ${data.motorStatus ? 'ON' : 'OFF'}`;
+            document.getElementById('dataBadge').innerHTML = `<i class="fas fa-database"></i>Data: Live`;
             
             // Update motor toggle
             const motorToggle = document.getElementById('motorToggle');
             motorToggle.checked = data.motorStatus || false;
             document.getElementById('motorStatus').textContent = `Motor is ${data.motorStatus ? 'ON' : 'OFF'}`;
             
-            // Update mode buttons
+            // Update mode buttons and motor control availability
             if (data.mode === 'AUTO') {
                 document.getElementById('autoBtn').classList.add('active');
                 document.getElementById('manualBtn').classList.remove('active');
-                document.getElementById('motorToggle').disabled = true;
-                document.getElementById('motorModeHint').style.display = 'block';
+                motorToggle.disabled = true;
+                document.getElementById('motorModeHint').innerHTML = '(Auto mode - System controlled)';
             } else {
                 document.getElementById('autoBtn').classList.remove('active');
                 document.getElementById('manualBtn').classList.add('active');
-                document.getElementById('motorToggle').disabled = false;
-                document.getElementById('motorModeHint').style.display = 'none';
+                motorToggle.disabled = false;
+                document.getElementById('motorModeHint').innerHTML = '(Manual mode - You can control)';
             }
             
             // Update charts
@@ -760,44 +962,147 @@
                 rainData.shift();
             }
             
-            tempHumChart.data.labels = timestamps;
-            tempHumChart.data.datasets[0].data = tempData;
-            tempHumChart.data.datasets[1].data = humData;
-            tempHumChart.update();
+            if (tempHumChart && soilRainChart) {
+                tempHumChart.data.labels = timestamps;
+                tempHumChart.data.datasets[0].data = tempData;
+                tempHumChart.data.datasets[1].data = humData;
+                tempHumChart.update();
+                
+                soilRainChart.data.labels = timestamps;
+                soilRainChart.data.datasets[0].data = soilData;
+                soilRainChart.data.datasets[1].data = rainData;
+                soilRainChart.update();
+            }
+        }
+
+        // Test Firebase Connection
+        function testFirebaseConnection() {
+            if (!database) {
+                document.getElementById('testResult').innerHTML = '<i class="fas fa-times-circle" style="color: #dc3545;"></i> Firebase not initialized';
+                return;
+            }
             
-            soilRainChart.data.labels = timestamps;
-            soilRainChart.data.datasets[0].data = soilData;
-            soilRainChart.data.datasets[1].data = rainData;
-            soilRainChart.update();
+            document.getElementById('testResult').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing connection...';
+            
+            database.ref('.info/connected').once('value')
+                .then((snap) => {
+                    if (snap.val() === true) {
+                        document.getElementById('testResult').innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Firebase connected successfully';
+                        document.getElementById('connectionBadge').innerHTML = '<i class="fas fa-circle" style="color: #28a745; font-size: 10px;"></i> Connected';
+                        document.getElementById('connectionBadge').className = 'badge online';
+                        addLogEntry('Connection test successful', 'success');
+                    } else {
+                        document.getElementById('testResult').innerHTML = '<i class="fas fa-times-circle" style="color: #dc3545;"></i> Not connected to Firebase';
+                    }
+                })
+                .catch((error) => {
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-times-circle" style="color: #dc3545;"></i> Error: ${error.message}`;
+                    addLogEntry('Connection test failed: ' + error.message, 'warning');
+                });
+        }
+
+        // Write test data to Firebase
+        function writeTestData() {
+            if (!database) {
+                alert('Firebase not initialized');
+                return;
+            }
+            
+            const testData = {
+                Temperature: 25.5,
+                Humidity: 65,
+                SoilMoisture: 45,
+                Rain: 10,
+                timestamp: new Date().toISOString()
+            };
+            
+            database.ref('/Agri').update(testData)
+                .then(() => {
+                    document.getElementById('testResult').innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Test data written successfully';
+                    addLogEntry('Test data written to Firebase', 'success');
+                })
+                .catch((error) => {
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-times-circle" style="color: #dc3545;"></i> Write failed: ${error.message}`;
+                    addLogEntry('Failed to write test data: ' + error.message, 'warning');
+                });
+        }
+
+        // Read all data from Firebase
+        function readAllData() {
+            if (!database) {
+                alert('Firebase not initialized');
+                return;
+            }
+            
+            database.ref('/Agri').once('value')
+                .then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        document.getElementById('testResult').innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Data read successfully';
+                        console.log('Firebase Data:', data);
+                        addLogEntry('Read all data from Firebase', 'success');
+                        
+                        // Format data for display
+                        let dataStr = 'Data found: ';
+                        Object.keys(data).forEach(key => {
+                            dataStr += `${key}: ${data[key]}, `;
+                        });
+                        alert(dataStr);
+                    } else {
+                        document.getElementById('testResult').innerHTML = '<i class="fas fa-info-circle"></i> No data found in /Agri';
+                        addLogEntry('No data found in Firebase', 'update');
+                    }
+                })
+                .catch((error) => {
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-times-circle" style="color: #dc3545;"></i> Read failed: ${error.message}`;
+                    addLogEntry('Failed to read data: ' + error.message, 'warning');
+                });
         }
 
         // Set mode
         function setMode(mode) {
+            if (!database) {
+                alert('Firebase not initialized');
+                return;
+            }
+            
             database.ref('/Agri/Mode').set(mode)
                 .then(() => {
                     addLogEntry(`Mode changed to ${mode}`, mode === 'AUTO' ? 'update' : 'warning');
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Mode set to ${mode}`;
                 })
                 .catch(error => {
                     console.error('Error setting mode:', error);
-                    addLogEntry('Failed to change mode', 'warning');
+                    addLogEntry('Failed to change mode: ' + error.message, 'warning');
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-times-circle" style="color: #dc3545;"></i> Failed to set mode: ${error.message}`;
                 });
         }
 
         // Toggle motor
         function toggleMotor(state) {
+            if (!database) {
+                alert('Firebase not initialized');
+                document.getElementById('motorToggle').checked = false;
+                return;
+            }
+            
             if (document.getElementById('autoBtn').classList.contains('active')) {
                 addLogEntry('Cannot control motor in AUTO mode', 'warning');
                 document.getElementById('motorToggle').checked = false;
+                alert('Motor can only be controlled in MANUAL mode');
                 return;
             }
             
             database.ref('/Agri/Motor').set(state)
                 .then(() => {
                     addLogEntry(`Motor turned ${state ? 'ON' : 'OFF'}`, state ? 'success' : 'update');
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Motor turned ${state ? 'ON' : 'OFF'}`;
                 })
                 .catch(error => {
                     console.error('Error toggling motor:', error);
-                    addLogEntry('Failed to control motor', 'warning');
+                    addLogEntry('Failed to control motor: ' + error.message, 'warning');
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-times-circle" style="color: #dc3545;"></i> Motor control failed`;
+                    document.getElementById('motorToggle').checked = !state;
                 });
         }
 
@@ -814,46 +1119,95 @@
             }
         }
 
-        // Listen to Firebase changes
+        // Initialize Firebase listeners
         function initializeFirebaseListeners() {
+            if (!database) {
+                console.error('Firebase not initialized');
+                return;
+            }
+            
+            console.log('Setting up Firebase listeners...');
+            
+            // Listen to connection state
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    console.log('Connected to Firebase');
+                    document.getElementById('connectionBadge').innerHTML = '<i class="fas fa-circle" style="color: #28a745; font-size: 10px;"></i> Connected';
+                    document.getElementById('connectionBadge').className = 'badge online';
+                } else {
+                    console.log('Disconnected from Firebase');
+                    document.getElementById('connectionBadge').innerHTML = '<i class="fas fa-circle" style="color: #dc3545; font-size: 10px;"></i> Disconnected';
+                    document.getElementById('connectionBadge').className = 'badge offline';
+                }
+            });
+
             // Listen to all Agri data
             database.ref('/Agri').on('value', (snapshot) => {
                 const data = snapshot.val();
+                console.log('Received data:', data);
                 if (data) {
                     updateUI(data);
                     checkAlerts(data);
+                } else {
+                    console.log('No data in /Agri');
+                    addLogEntry('No data received from sensors', 'warning');
                 }
             });
 
             // Listen to specific paths for detailed logging
-            database.ref('/Agri/Temperature').on('change', (snapshot) => {
-                addLogEntry('Temperature updated', 'update', `${snapshot.val()}°C`);
+            database.ref('/Agri/Temperature').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    addLogEntry('Temperature updated', 'update', `${snapshot.val()}°C`);
+                }
             });
 
-            database.ref('/Agri/Humidity').on('change', (snapshot) => {
-                addLogEntry('Humidity updated', 'update', `${snapshot.val()}%`);
+            database.ref('/Agri/Humidity').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    addLogEntry('Humidity updated', 'update', `${snapshot.val()}%`);
+                }
             });
 
-            database.ref('/Agri/SoilMoisture').on('change', (snapshot) => {
-                addLogEntry('Soil moisture updated', 'update', `${snapshot.val()}%`);
+            database.ref('/Agri/SoilMoisture').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    addLogEntry('Soil moisture updated', 'update', `${snapshot.val()}%`);
+                }
             });
 
-            database.ref('/Agri/Rain').on('change', (snapshot) => {
-                addLogEntry('Rain level updated', 'update', `${snapshot.val()}%`);
+            database.ref('/Agri/Rain').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    addLogEntry('Rain level updated', 'update', `${snapshot.val()}%`);
+                }
             });
 
-            database.ref('/Agri/MotorStatus').on('change', (snapshot) => {
-                const status = snapshot.val() ? 'ON' : 'OFF';
-                addLogEntry(`Motor status changed to ${status}`, snapshot.val() ? 'success' : 'update');
+            database.ref('/Agri/MotorStatus').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    const status = snapshot.val() ? 'ON' : 'OFF';
+                    addLogEntry(`Motor status changed to ${status}`, snapshot.val() ? 'success' : 'update');
+                }
+            });
+
+            database.ref('/Agri/Mode').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    addLogEntry(`Mode changed to ${snapshot.val()}`, 'update');
+                }
             });
         }
 
         // Initialize on page load
         window.onload = function() {
             initCharts();
-            initializeFirebaseListeners();
-            addLogEntry('Dashboard initialized', 'success');
-            addLogEntry('Connected to Firebase', 'success');
+            
+            if (firebaseInitialized) {
+                initializeFirebaseListeners();
+                addLogEntry('Dashboard initialized', 'success');
+                
+                // Test connection after 2 seconds
+                setTimeout(() => {
+                    testFirebaseConnection();
+                }, 2000);
+            } else {
+                addLogEntry('Firebase initialization failed', 'warning');
+            }
             
             // Add welcome message
             setTimeout(() => {
