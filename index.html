@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriSense Pro | Smart Agriculture Dashboard</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Main Container */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-title h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .header-title p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.mode {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .badge.motor {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .sensor-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .card-icon.temp { background: #fee2e2; color: #dc2626; }
+        .card-icon.humidity { background: #dbeafe; color: #2563eb; }
+        .card-icon.soil { background: #dcfce7; color: #16a34a; }
+        .card-icon.rain { background: #cffafe; color: #0891b2; }
+
+        .card-title {
+            font-size: 16px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .card-unit {
+            font-size: 14px;
+            color: #999;
+            margin-left: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.temp { background: linear-gradient(90deg, #f87171, #dc2626); }
+        .progress-fill.humidity { background: linear-gradient(90deg, #60a5fa, #2563eb); }
+        .progress-fill.soil { background: linear-gradient(90deg, #4ade80, #16a34a); }
+        .progress-fill.rain { background: linear-gradient(90deg, #22d3ee, #0891b2); }
+
+        /* Charts Container */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-title i {
+            color: #667eea;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .control-header h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            background: #f0f0f0;
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .mode-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .mode-btn:not(.active) {
+            background: transparent;
+            color: #666;
+        }
+
+        .motor-control {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 80px;
+            height: 40px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 40px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 32px;
+            width: 32px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(40px);
+        }
+
+        .motor-status {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Update Log */
+        .update-log {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .log-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .log-entry {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-time {
+            font-size: 12px;
+            color: #999;
+            min-width: 70px;
+        }
+
+        .log-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .log-icon.update { background: #dbeafe; color: #2563eb; }
+        .log-icon.warning { background: #fee2e2; color: #dc2626; }
+        .log-icon.success { background: #dcfce7; color: #16a34a; }
+
+        .log-message {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .log-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .mode-selector {
+                width: 100%;
+            }
+            
+            .mode-btn {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">
+                <h1><i class="fas fa-seedling" style="margin-right: 10px;"></i>AgriSense Pro</h1>
+                <p>Wind-Based Smart Agriculture Monitoring System</p>
+            </div>
+            <div class="status-badge">
+                <div class="badge online">
+                    <i class="fas fa-circle" style="color: #28a745; font-size: 10px;"></i>
+                    System Online
+                </div>
+                <div class="badge mode" id="modeBadge">
+                    <i class="fas fa-robot"></i>
+                    Mode: AUTO
+                </div>
+                <div class="badge motor" id="motorBadge">
+                    <i class="fas fa-motor"></i>
+                    Motor: OFF
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensor Cards -->
+        <div class="cards-grid">
+            <!-- Temperature Card -->
+            <div class="sensor-card">
+                <div class="card-header">
+                    <div class="card-icon temp">
+                        <i class="fas fa-thermometer-half"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Temperature</div>
+                        <div class="card-value" id="tempValue">--<span class="card-unit">°C</span></div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill temp" id="tempProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Humidity Card -->
+            <div class="sensor-card">
+                <div class="card-header">
+                    <div class="card-icon humidity">
+                        <i class="fas fa-tint"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Humidity</div>
+                        <div class="card-value" id="humValue">--<span class="card-unit">%</span></div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill humidity" id="humProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Soil Moisture Card -->
+            <div class="sensor-card">
+                <div class="card-header">
+                    <div class="card-icon soil">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Soil Moisture</div>
+                        <div class="card-value" id="soilValue">--<span class="card-unit">%</span></div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill soil" id="soilProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Rain Level Card -->
+            <div class="sensor-card">
+                <div class="card-header">
+                    <div class="card-icon rain">
+                        <i class="fas fa-cloud-rain"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Rain Level</div>
+                        <div class="card-value" id="rainValue">--<span class="card-unit">%</span></div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill rain" id="rainProgress" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-container">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <i class="fas fa-chart-line"></i>
+                    Temperature & Humidity Trends
+                </div>
+                <canvas id="tempHumChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Soil & Rain Levels
+                </div>
+                <canvas id="soilRainChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-header">
+                <h3><i class="fas fa-sliders-h" style="margin-right: 10px;"></i>Control Panel</h3>
+                <div class="mode-selector">
+                    <button class="mode-btn active" onclick="setMode('AUTO')" id="autoBtn">AUTO</button>
+                    <button class="mode-btn" onclick="setMode('MANUAL')" id="manualBtn">MANUAL</button>
+                </div>
+            </div>
+            <div class="motor-control">
+                <div class="toggle-switch">
+                    <input type="checkbox" id="motorToggle" onchange="toggleMotor(this.checked)">
+                    <span class="toggle-slider"></span>
+                </div>
+                <div class="motor-status" id="motorStatus">Motor is OFF</div>
+                <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px;">(Auto mode - Controlled by system)</div>
+            </div>
+        </div>
+
+        <!-- Update Log -->
+        <div class="update-log">
+            <div class="log-header">
+                <h3><i class="fas fa-history" style="margin-right: 10px;"></i>Update Log</h3>
+                <span style="color: #666; font-size: 12px;" id="logCount">0 entries</span>
+            </div>
+            <div class="log-container" id="logContainer">
+                <!-- Log entries will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZw1mJHC3J20VOSy1wTkO83c65o9-fqE4",
+            authDomain: "wind-based-agri.firebaseapp.com",
+            databaseURL: "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "wind-based-agri",
+            storageBucket: "wind-based-agri.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abc123def456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Chart initialization
+        let tempHumChart, soilRainChart;
+        const maxDataPoints = 20;
+        let timestamps = [];
+        let tempData = [];
+        let humData = [];
+        let soilData = [];
+        let rainData = [];
+
+        // Initialize charts
+        function initCharts() {
+            const ctx1 = document.getElementById('tempHumChart').getContext('2d');
+            tempHumChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: [],
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: [],
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('soilRainChart').getContext('2d');
+            soilRainChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Soil Moisture (%)',
+                            data: [],
+                            borderColor: '#16a34a',
+                            backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Rain Level (%)',
+                            data: [],
+                            borderColor: '#0891b2',
+                            backgroundColor: 'rgba(8, 145, 178, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add log entry
+        function addLogEntry(message, type = 'update', value = null) {
+            const logContainer = document.getElementById('logContainer');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            let icon = 'fa-info-circle';
+            if (type === 'warning') icon = 'fa-exclamation-triangle';
+            if (type === 'success') icon = 'fa-check-circle';
+            
+            let valueHtml = '';
+            if (value !== null) {
+                valueHtml = `<span class="log-value">${value}</span>`;
+            }
+            
+            logEntry.innerHTML = `
+                <div class="log-time">${timeStr}</div>
+                <div class="log-icon ${type}">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="log-message">${message} ${valueHtml}</div>
+            `;
+            
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            // Keep only last 20 entries
+            while (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+            
+            document.getElementById('logCount').textContent = `${logContainer.children.length} entries`;
+        }
+
+        // Update UI with sensor data
+        function updateUI(data) {
+            // Update cards
+            document.getElementById('tempValue').innerHTML = `${data.temperature?.toFixed(1) || '--'}<span class="card-unit">°C</span>`;
+            document.getElementById('humValue').innerHTML = `${data.humidity?.toFixed(1) || '--'}<span class="card-unit">%</span>`;
+            document.getElementById('soilValue').innerHTML = `${data.soilMoisture?.toFixed(1) || '--'}<span class="card-unit">%</span>`;
+            document.getElementById('rainValue').innerHTML = `${data.rainLevel?.toFixed(1) || '--'}<span class="card-unit">%</span>`;
+            
+            // Update progress bars
+            document.getElementById('tempProgress').style.width = `${data.temperature || 0}%`;
+            document.getElementById('humProgress').style.width = `${data.humidity || 0}%`;
+            document.getElementById('soilProgress').style.width = `${data.soilMoisture || 0}%`;
+            document.getElementById('rainProgress').style.width = `${data.rainLevel || 0}%`;
+            
+            // Update badges
+            document.getElementById('modeBadge').innerHTML = `<i class="fas fa-robot"></i>Mode: ${data.mode || 'AUTO'}`;
+            document.getElementById('motorBadge').innerHTML = `<i class="fas fa-motor"></i>Motor: ${data.motorStatus ? 'ON' : 'OFF'}`;
+            
+            // Update motor toggle
+            const motorToggle = document.getElementById('motorToggle');
+            motorToggle.checked = data.motorStatus || false;
+            document.getElementById('motorStatus').textContent = `Motor is ${data.motorStatus ? 'ON' : 'OFF'}`;
+            
+            // Update mode buttons
+            if (data.mode === 'AUTO') {
+                document.getElementById('autoBtn').classList.add('active');
+                document.getElementById('manualBtn').classList.remove('active');
+                document.getElementById('motorToggle').disabled = true;
+                document.getElementById('motorModeHint').style.display = 'block';
+            } else {
+                document.getElementById('autoBtn').classList.remove('active');
+                document.getElementById('manualBtn').classList.add('active');
+                document.getElementById('motorToggle').disabled = false;
+                document.getElementById('motorModeHint').style.display = 'none';
+            }
+            
+            // Update charts
+            const now = new Date().toLocaleTimeString();
+            timestamps.push(now);
+            tempData.push(data.temperature || 0);
+            humData.push(data.humidity || 0);
+            soilData.push(data.soilMoisture || 0);
+            rainData.push(data.rainLevel || 0);
+            
+            if (timestamps.length > maxDataPoints) {
+                timestamps.shift();
+                tempData.shift();
+                humData.shift();
+                soilData.shift();
+                rainData.shift();
+            }
+            
+            tempHumChart.data.labels = timestamps;
+            tempHumChart.data.datasets[0].data = tempData;
+            tempHumChart.data.datasets[1].data = humData;
+            tempHumChart.update();
+            
+            soilRainChart.data.labels = timestamps;
+            soilRainChart.data.datasets[0].data = soilData;
+            soilRainChart.data.datasets[1].data = rainData;
+            soilRainChart.update();
+        }
+
+        // Set mode
+        function setMode(mode) {
+            database.ref('/Agri/Mode').set(mode)
+                .then(() => {
+                    addLogEntry(`Mode changed to ${mode}`, mode === 'AUTO' ? 'update' : 'warning');
+                })
+                .catch(error => {
+                    console.error('Error setting mode:', error);
+                    addLogEntry('Failed to change mode', 'warning');
+                });
+        }
+
+        // Toggle motor
+        function toggleMotor(state) {
+            if (document.getElementById('autoBtn').classList.contains('active')) {
+                addLogEntry('Cannot control motor in AUTO mode', 'warning');
+                document.getElementById('motorToggle').checked = false;
+                return;
+            }
+            
+            database.ref('/Agri/Motor').set(state)
+                .then(() => {
+                    addLogEntry(`Motor turned ${state ? 'ON' : 'OFF'}`, state ? 'success' : 'update');
+                })
+                .catch(error => {
+                    console.error('Error toggling motor:', error);
+                    addLogEntry('Failed to control motor', 'warning');
+                });
+        }
+
+        // Check for alerts
+        function checkAlerts(data) {
+            if (data.soilMoisture < 35 && data.rainLevel < 30) {
+                addLogEntry('Alert: Soil is dry and no rain detected', 'warning');
+            }
+            if (data.rainLevel > 30) {
+                addLogEntry('Rain detected!', 'warning');
+            }
+            if (data.temperature > 40) {
+                addLogEntry('High temperature warning!', 'warning');
+            }
+        }
+
+        // Listen to Firebase changes
+        function initializeFirebaseListeners() {
+            // Listen to all Agri data
+            database.ref('/Agri').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    updateUI(data);
+                    checkAlerts(data);
+                }
+            });
+
+            // Listen to specific paths for detailed logging
+            database.ref('/Agri/Temperature').on('change', (snapshot) => {
+                addLogEntry('Temperature updated', 'update', `${snapshot.val()}°C`);
+            });
+
+            database.ref('/Agri/Humidity').on('change', (snapshot) => {
+                addLogEntry('Humidity updated', 'update', `${snapshot.val()}%`);
+            });
+
+            database.ref('/Agri/SoilMoisture').on('change', (snapshot) => {
+                addLogEntry('Soil moisture updated', 'update', `${snapshot.val()}%`);
+            });
+
+            database.ref('/Agri/Rain').on('change', (snapshot) => {
+                addLogEntry('Rain level updated', 'update', `${snapshot.val()}%`);
+            });
+
+            database.ref('/Agri/MotorStatus').on('change', (snapshot) => {
+                const status = snapshot.val() ? 'ON' : 'OFF';
+                addLogEntry(`Motor status changed to ${status}`, snapshot.val() ? 'success' : 'update');
+            });
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            initCharts();
+            initializeFirebaseListeners();
+            addLogEntry('Dashboard initialized', 'success');
+            addLogEntry('Connected to Firebase', 'success');
+            
+            // Add welcome message
+            setTimeout(() => {
+                addLogEntry('System ready for monitoring', 'update');
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
