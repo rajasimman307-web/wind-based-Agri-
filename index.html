@@ -370,7 +370,7 @@
         }
 
         input:checked + .toggle-slider {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
 
         input:checked + .toggle-slider:before {
@@ -381,6 +381,14 @@
             font-size: 16px;
             font-weight: 600;
             color: #333;
+        }
+
+        .motor-status.on {
+            color: #10b981;
+        }
+
+        .motor-status.off {
+            color: #ef4444;
         }
 
         .update-log {
@@ -618,8 +626,10 @@
                     <input type="checkbox" id="motorToggle" onchange="toggleMotor(this.checked)">
                     <span class="toggle-slider"></span>
                 </div>
-                <div class="motor-status" id="motorStatus">Motor is OFF</div>
-                <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px;">(Auto mode - System controlled)</div>
+                <div>
+                    <div class="motor-status off" id="motorStatus">Motor is OFF</div>
+                    <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px; margin-top: 5px;">(Auto mode - System controlled)</div>
+                </div>
             </div>
         </div>
 
@@ -800,10 +810,29 @@
             document.getElementById('logCount').textContent = `${logContainer.children.length} entries`;
         }
 
+        function updateMotorUI(status) {
+            const motorStatus = document.getElementById('motorStatus');
+            const motorBadge = document.getElementById('motorBadge');
+            
+            if (status) {
+                motorStatus.textContent = 'Motor is ON';
+                motorStatus.className = 'motor-status on';
+                motorBadge.innerHTML = '<i class="fas fa-motor"></i> Motor: ON';
+                motorBadge.style.background = '#d4edda';
+                motorBadge.style.color = '#155724';
+            } else {
+                motorStatus.textContent = 'Motor is OFF';
+                motorStatus.className = 'motor-status off';
+                motorBadge.innerHTML = '<i class="fas fa-motor"></i> Motor: OFF';
+                motorBadge.style.background = '#fff3cd';
+                motorBadge.style.color = '#856404';
+            }
+        }
+
         function updateUI(data) {
             console.log('Updating UI with data:', data);
             
-            // Update cards with the correct path names from ESP32
+            // Update cards
             document.getElementById('tempValue').innerHTML = `${(data.Temperature || data.temperature || 0).toFixed(1)}<span class="card-unit">°C</span>`;
             document.getElementById('humValue').innerHTML = `${(data.Humidity || data.humidity || 0).toFixed(1)}<span class="card-unit">%</span>`;
             document.getElementById('soilValue').innerHTML = `${(data.SoilMoisture || data.soilMoisture || 0).toFixed(1)}<span class="card-unit">%</span>`;
@@ -820,12 +849,13 @@
             const motorStatus = data.MotorStatus || data.motorStatus || false;
             
             document.getElementById('modeBadge').innerHTML = `<i class="fas fa-robot"></i>Mode: ${mode}`;
-            document.getElementById('motorBadge').innerHTML = `<i class="fas fa-motor"></i>Motor: ${motorStatus ? 'ON' : 'OFF'}`;
             
-            // Update motor toggle
+            // Update motor UI
+            updateMotorUI(motorStatus);
+            
+            // Update motor toggle - IMPORTANT: This matches the relay state from MotorStatus
             const motorToggle = document.getElementById('motorToggle');
             motorToggle.checked = motorStatus;
-            document.getElementById('motorStatus').textContent = `Motor is ${motorStatus ? 'ON' : 'OFF'}`;
             
             // Update mode buttons
             if (mode === 'AUTO') {
@@ -905,8 +935,7 @@
                 Rain: 10,
                 Mode: 'AUTO',
                 Motor: false,
-                MotorStatus: false,
-                timestamp: new Date().toISOString()
+                MotorStatus: false
             };
             
             database.ref('/Agri').set(testData)
@@ -981,18 +1010,23 @@
                 return;
             }
             
+            // Set the Motor control path (used by ESP32 for manual mode)
             database.ref('/Agri/Motor').set(state)
                 .then(() => {
-                    database.ref('/Agri/MotorStatus').set(state)
-                        .then(() => {
-                            addLogEntry(`Motor turned ${state ? 'ON' : 'OFF'}`, state ? 'success' : 'update');
-                            document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Motor turned ${state ? 'ON' : 'OFF'}`;
-                        });
+                    // Note: MotorStatus will be updated by ESP32 based on actual relay state
+                    addLogEntry(`Motor command sent: Turn ${state ? 'ON' : 'OFF'}`, 'update');
+                    document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Motor command sent`;
+                    
+                    // Optimistically update UI
+                    updateMotorUI(state);
                 })
                 .catch(error => {
                     console.error('Error toggling motor:', error);
                     addLogEntry('Failed to control motor: ' + error.message, 'warning');
-                    document.getElementById('motorToggle').checked = !state;
+                    // Revert toggle if failed
+                    database.ref('/Agri/MotorStatus').once('value').then((snap) => {
+                        document.getElementById('motorToggle').checked = snap.val() || false;
+                    });
                 });
         }
 
@@ -1032,7 +1066,7 @@
                 }
             });
 
-            // Listen to all Agri data - this matches your ESP32 structure
+            // Listen to all Agri data
             database.ref('/Agri').on('value', (snapshot) => {
                 const data = snapshot.val();
                 console.log('Received data from Firebase:', data);
@@ -1049,6 +1083,16 @@
             }, (error) => {
                 console.error('Firebase listener error:', error);
                 document.getElementById('dataBadge').innerHTML = '<i class="fas fa-database"></i> Data: Error';
+            });
+
+            // Specifically listen to MotorStatus for real-time updates
+            database.ref('/Agri/MotorStatus').on('value', (snapshot) => {
+                const status = snapshot.val();
+                if (status !== null) {
+                    console.log('MotorStatus updated:', status);
+                    updateMotorUI(status);
+                    document.getElementById('motorToggle').checked = status;
+                }
             });
         }
 
