@@ -99,6 +99,16 @@
             color: #856404;
         }
 
+        .badge.motor.on {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.motor.off {
+            background: #fff3cd;
+            color: #856404;
+        }
+
         .badge.data {
             background: #e2d5f1;
             color: #553c9a;
@@ -274,121 +284,71 @@
             height: 300px !important;
         }
 
-        .control-panel {
+        .motor-status-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 25px;
             margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
-        }
-
-        .control-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 20px;
         }
 
-        .control-header h3 {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .mode-selector {
-            display: flex;
-            gap: 10px;
-            background: #f0f0f0;
-            padding: 5px;
-            border-radius: 12px;
-        }
-
-        .mode-btn {
-            padding: 10px 25px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-
-        .mode-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .mode-btn:not(.active) {
-            background: transparent;
-            color: #666;
-        }
-
-        .motor-control {
+        .motor-info {
             display: flex;
             align-items: center;
             gap: 20px;
-            flex-wrap: wrap;
         }
 
-        .toggle-switch {
-            position: relative;
-            width: 80px;
-            height: 40px;
+        .motor-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
         }
 
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 40px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 32px;
-            width: 32px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .toggle-slider {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        input:checked + .toggle-slider:before {
-            transform: translateX(40px);
-        }
-
-        .motor-status {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .motor-status.on {
+        .motor-icon.on {
+            background: #d4edda;
             color: #10b981;
         }
 
-        .motor-status.off {
-            color: #ef4444;
+        .motor-icon.off {
+            background: #fff3cd;
+            color: #f59e0b;
+        }
+
+        .motor-details h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .motor-details p {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .motor-details p.on {
+            color: #10b981;
+        }
+
+        .motor-details p.off {
+            color: #f59e0b;
+        }
+
+        .motor-status-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
         }
 
         .update-log {
@@ -479,13 +439,9 @@
                 align-items: flex-start;
             }
             
-            .mode-selector {
-                width: 100%;
-            }
-            
-            .mode-btn {
-                flex: 1;
-                text-align: center;
+            .motor-status-card {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -506,7 +462,7 @@
                     <i class="fas fa-robot"></i>
                     Mode: AUTO
                 </div>
-                <div class="badge motor" id="motorBadge">
+                <div class="badge motor off" id="motorBadge">
                     <i class="fas fa-motor"></i>
                     Motor: OFF
                 </div>
@@ -613,23 +569,20 @@
             </div>
         </div>
 
-        <div class="control-panel">
-            <div class="control-header">
-                <h3><i class="fas fa-sliders-h" style="margin-right: 10px;"></i>Control Panel</h3>
-                <div class="mode-selector">
-                    <button class="mode-btn active" onclick="setMode('AUTO')" id="autoBtn">AUTO</button>
-                    <button class="mode-btn" onclick="setMode('MANUAL')" id="manualBtn">MANUAL</button>
+        <!-- Motor Status Card - Removed AUTO/MANUAL controls -->
+        <div class="motor-status-card">
+            <div class="motor-info">
+                <div class="motor-icon off" id="motorIcon">
+                    <i class="fas fa-motor"></i>
+                </div>
+                <div class="motor-details">
+                    <h3>Motor Status</h3>
+                    <p class="off" id="motorStatusDisplay">OFF</p>
+                    <div class="motor-status-text" id="motorStatusText">System controlled - Auto mode</div>
                 </div>
             </div>
-            <div class="motor-control">
-                <div class="toggle-switch">
-                    <input type="checkbox" id="motorToggle" onchange="toggleMotor(this.checked)">
-                    <span class="toggle-slider"></span>
-                </div>
-                <div>
-                    <div class="motor-status off" id="motorStatus">Motor is OFF</div>
-                    <div class="motor-status" id="motorModeHint" style="color: #666; font-size: 14px; margin-top: 5px;">(Auto mode - System controlled)</div>
-                </div>
+            <div class="motor-status-text" style="background: #f0f0f0; padding: 8px 16px; border-radius: 20px;">
+                <i class="fas fa-info-circle"></i> Automatically controlled by sensors
             </div>
         </div>
 
@@ -811,21 +764,35 @@
         }
 
         function updateMotorUI(status) {
-            const motorStatus = document.getElementById('motorStatus');
             const motorBadge = document.getElementById('motorBadge');
+            const motorIcon = document.getElementById('motorIcon');
+            const motorStatusDisplay = document.getElementById('motorStatusDisplay');
+            const motorStatusText = document.getElementById('motorStatusText');
             
             if (status) {
-                motorStatus.textContent = 'Motor is ON';
-                motorStatus.className = 'motor-status on';
+                // Motor ON
                 motorBadge.innerHTML = '<i class="fas fa-motor"></i> Motor: ON';
-                motorBadge.style.background = '#d4edda';
-                motorBadge.style.color = '#155724';
+                motorBadge.className = 'badge motor on';
+                
+                motorIcon.className = 'motor-icon on';
+                motorIcon.innerHTML = '<i class="fas fa-motor"></i>';
+                
+                motorStatusDisplay.textContent = 'ON';
+                motorStatusDisplay.className = 'on';
+                
+                motorStatusText.innerHTML = '<i class="fas fa-check-circle"></i> Motor is running';
             } else {
-                motorStatus.textContent = 'Motor is OFF';
-                motorStatus.className = 'motor-status off';
+                // Motor OFF
                 motorBadge.innerHTML = '<i class="fas fa-motor"></i> Motor: OFF';
-                motorBadge.style.background = '#fff3cd';
-                motorBadge.style.color = '#856404';
+                motorBadge.className = 'badge motor off';
+                
+                motorIcon.className = 'motor-icon off';
+                motorIcon.innerHTML = '<i class="fas fa-motor"></i>';
+                
+                motorStatusDisplay.textContent = 'OFF';
+                motorStatusDisplay.className = 'off';
+                
+                motorStatusText.innerHTML = '<i class="fas fa-pause-circle"></i> Motor is stopped';
             }
         }
 
@@ -844,31 +811,13 @@
             document.getElementById('soilProgress').style.width = `${data.SoilMoisture || data.soilMoisture || 0}%`;
             document.getElementById('rainProgress').style.width = `${data.Rain || data.rainLevel || 0}%`;
             
-            // Update badges
+            // Update mode badge
             const mode = data.Mode || data.mode || 'AUTO';
-            const motorStatus = data.MotorStatus || data.motorStatus || false;
-            
             document.getElementById('modeBadge').innerHTML = `<i class="fas fa-robot"></i>Mode: ${mode}`;
             
-            // Update motor UI
+            // Update motor status
+            const motorStatus = data.MotorStatus || data.motorStatus || false;
             updateMotorUI(motorStatus);
-            
-            // Update motor toggle - IMPORTANT: This matches the relay state from MotorStatus
-            const motorToggle = document.getElementById('motorToggle');
-            motorToggle.checked = motorStatus;
-            
-            // Update mode buttons
-            if (mode === 'AUTO') {
-                document.getElementById('autoBtn').classList.add('active');
-                document.getElementById('manualBtn').classList.remove('active');
-                motorToggle.disabled = true;
-                document.getElementById('motorModeHint').innerHTML = '(Auto mode - System controlled)';
-            } else {
-                document.getElementById('autoBtn').classList.remove('active');
-                document.getElementById('manualBtn').classList.add('active');
-                motorToggle.disabled = false;
-                document.getElementById('motorModeHint').innerHTML = '(Manual mode - You can control)';
-            }
             
             // Update charts
             const now = new Date().toLocaleTimeString();
@@ -979,57 +928,6 @@
                 });
         }
 
-        function setMode(mode) {
-            if (!database) {
-                alert('Firebase not initialized');
-                return;
-            }
-            
-            database.ref('/Agri/Mode').set(mode)
-                .then(() => {
-                    addLogEntry(`Mode changed to ${mode}`, mode === 'AUTO' ? 'update' : 'warning');
-                    document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Mode set to ${mode}`;
-                })
-                .catch(error => {
-                    console.error('Error setting mode:', error);
-                    addLogEntry('Failed to change mode: ' + error.message, 'warning');
-                });
-        }
-
-        function toggleMotor(state) {
-            if (!database) {
-                alert('Firebase not initialized');
-                document.getElementById('motorToggle').checked = false;
-                return;
-            }
-            
-            if (document.getElementById('autoBtn').classList.contains('active')) {
-                addLogEntry('Cannot control motor in AUTO mode', 'warning');
-                document.getElementById('motorToggle').checked = false;
-                alert('Motor can only be controlled in MANUAL mode');
-                return;
-            }
-            
-            // Set the Motor control path (used by ESP32 for manual mode)
-            database.ref('/Agri/Motor').set(state)
-                .then(() => {
-                    // Note: MotorStatus will be updated by ESP32 based on actual relay state
-                    addLogEntry(`Motor command sent: Turn ${state ? 'ON' : 'OFF'}`, 'update');
-                    document.getElementById('testResult').innerHTML = `<i class="fas fa-check-circle" style="color: #28a745;"></i> Motor command sent`;
-                    
-                    // Optimistically update UI
-                    updateMotorUI(state);
-                })
-                .catch(error => {
-                    console.error('Error toggling motor:', error);
-                    addLogEntry('Failed to control motor: ' + error.message, 'warning');
-                    // Revert toggle if failed
-                    database.ref('/Agri/MotorStatus').once('value').then((snap) => {
-                        document.getElementById('motorToggle').checked = snap.val() || false;
-                    });
-                });
-        }
-
         function checkAlerts(data) {
             const soilMoisture = data.SoilMoisture || data.soilMoisture || 0;
             const rain = data.Rain || data.rainLevel || 0;
@@ -1091,7 +989,6 @@
                 if (status !== null) {
                     console.log('MotorStatus updated:', status);
                     updateMotorUI(status);
-                    document.getElementById('motorToggle').checked = status;
                 }
             });
         }
