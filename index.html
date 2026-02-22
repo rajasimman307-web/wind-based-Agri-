@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Smart Irrigation Motor Control</title>
+<title>Smart Irrigation Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,19 +11,29 @@ body {
   background: #0f172a;
   color: #fff;
   text-align: center;
-  padding: 20px;
+  padding: 15px;
 }
 .card {
-  max-width: 380px;
+  max-width: 420px;
   margin: auto;
   background: #1e293b;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 14px;
+}
+h2 {
+  margin-bottom: 10px;
+}
+.sensor {
+  background: #020617;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  font-size: 18px;
 }
 button {
   width: 100%;
   padding: 14px;
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 18px;
   border: none;
   border-radius: 8px;
@@ -33,13 +43,14 @@ button {
 .off { background: #dc2626; color: white; }
 .auto { background: #2563eb; color: white; }
 .manual { background: #f59e0b; color: black; }
+
 .status {
-  margin-top: 15px;
+  margin-top: 10px;
   font-size: 18px;
 }
 .footer {
-  margin-top: 15px;
-  font-size: 14px;
+  margin-top: 12px;
+  font-size: 13px;
   opacity: 0.7;
 }
 </style>
@@ -48,8 +59,16 @@ button {
 <body>
 
 <div class="card">
-  <h2>🌱 Smart Motor Control</h2>
+  <h2>🌱 Smart Irrigation System</h2>
 
+  <!-- SENSOR DATA -->
+  <div class="sensor">🌡 Temp: <span id="temp">--</span> °C</div>
+  <div class="sensor">💧 Humidity: <span id="hum">--</span> %</div>
+  <div class="sensor">🌱 Soil: <span id="soil">--</span> %</div>
+  <div class="sensor">🌧 Rain: <span id="rain">--</span> %</div>
+  <div class="sensor">⚡ Motor: <span id="motorStatus">--</span></div>
+
+  <!-- CONTROLS -->
   <button class="auto" onclick="setAuto()">AUTO MODE</button>
   <button class="manual" onclick="setManual()">MANUAL MODE</button>
 
@@ -57,9 +76,8 @@ button {
   <button class="off" onclick="motorOff()">MOTOR OFF</button>
 
   <div class="status" id="mode">Mode: --</div>
-  <div class="status" id="motor">Motor: --</div>
 
-  <div class="footer">Firebase • ESP32 • GitHub Pages</div>
+  <div class="footer">ESP32 • Firebase • GitHub Pages</div>
 </div>
 
 <script type="module">
@@ -80,21 +98,38 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+/* ===== REFERENCES ===== */
+const tempRef  = ref(db, "Agri/Temperature");
+const humRef   = ref(db, "Agri/Humidity");
+const soilRef  = ref(db, "Agri/SoilMoisture");
+const rainRef  = ref(db, "Agri/Rain");
 const motorRef = ref(db, "Agri/Motor");
 const modeRef  = ref(db, "Agri/Mode");
+const motorStatusRef = ref(db, "Agri/MotorStatus");
 
 /* ===== BUTTON FUNCTIONS ===== */
-window.motorOn = () => set(motorRef, true);
+window.motorOn  = () => set(motorRef, true);
 window.motorOff = () => set(motorRef, false);
-window.setAuto = () => set(modeRef, "AUTO");
+window.setAuto  = () => set(modeRef, "AUTO");
 window.setManual = () => set(modeRef, "MANUAL");
 
-/* ===== LIVE STATUS ===== */
-onValue(motorRef, snap => {
-  document.getElementById("motor").innerText =
-    "Motor: " + (snap.val() ? "ON 🔥" : "OFF ❄️");
+/* ===== LIVE DATA ===== */
+onValue(tempRef, snap => {
+  document.getElementById("temp").innerText = snap.val()?.toFixed(1) ?? "--";
 });
-
+onValue(humRef, snap => {
+  document.getElementById("hum").innerText = snap.val()?.toFixed(1) ?? "--";
+});
+onValue(soilRef, snap => {
+  document.getElementById("soil").innerText = snap.val()?.toFixed(0) ?? "--";
+});
+onValue(rainRef, snap => {
+  document.getElementById("rain").innerText = snap.val()?.toFixed(0) ?? "--";
+});
+onValue(motorStatusRef, snap => {
+  document.getElementById("motorStatus").innerText =
+    snap.val() ? "ON 🔥" : "OFF ❄️";
+});
 onValue(modeRef, snap => {
   document.getElementById("mode").innerText =
     "Mode: " + snap.val();
