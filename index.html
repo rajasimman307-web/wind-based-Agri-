@@ -1,162 +1,105 @@
-#include <WiFi.h>
-#include <FirebaseESP32.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include "DHT.h"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Irrigation Motor Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-/* ================= WIFI ================= */
-#define WIFI_SSID "iPhone"
-#define WIFI_PASSWORD "murugaraj6385479706"
-
-/* ================= FIREBASE ================= */
-#define FIREBASE_HOST "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#define FIREBASE_AUTH "lwj0XO4RGYgeB0swCkRdxcmky1G7Eoij0pvx3IJr"
-
-/* ================= OLED ================= */
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
-/* ================= PINS ================= */
-#define SOIL_PIN 34
-#define RAIN_PIN 35
-#define DHTPIN 4
-#define BUZZER 26
-#define RELAY 27
-
-/* ================= RELAY TYPE ================= */
-#define RELAY_ON  LOW     // ACTIVE LOW RELAY
-#define RELAY_OFF HIGH
-
-/* ================= DHT ================= */
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
-/* ================= FIREBASE ================= */
-FirebaseData fbdo;
-FirebaseConfig config;
-FirebaseAuth auth;
-
-/* ================= THRESHOLDS ================= */
-#define SOIL_DRY_LEVEL 35
-#define RAIN_DETECT_LEVEL 30
-
-void setup() {
-  Serial.begin(115200);
-
-  pinMode(BUZZER, OUTPUT);
-  pinMode(RELAY, OUTPUT);
-
-  digitalWrite(BUZZER, LOW);
-  digitalWrite(RELAY, RELAY_OFF);   // ✅ START MOTOR OFF
-
-  dht.begin();
-  Wire.begin(21, 22);
-
-  /* OLED INIT */
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.clearDisplay();
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-
-  display.setCursor(0, 0);
-  display.println("Connecting WiFi...");
-  display.display();
-
-  /* WIFI */
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  /* FIREBASE */
-  config.database_url = FIREBASE_HOST;
-  config.signer.tokens.legacy_token = FIREBASE_AUTH;
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
-
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.println("WiFi OK");
-  display.println("Firebase OK");
-  display.println("Motor OFF");
-  display.display();
-
-  /* Default values */
-  Firebase.setString(fbdo, "/Agri/Mode", "AUTO");
-  Firebase.setBool(fbdo, "/Agri/Motor", false);
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #fff;
+  text-align: center;
+  padding: 20px;
 }
-
-void loop() {
-
-  /* ===== SENSOR READ ===== */
-  int soilRaw = analogRead(SOIL_PIN);
-  int rainRaw = analogRead(RAIN_PIN);
-
-  float soilPercent = map(soilRaw, 4095, 1200, 0, 100);
-  float rainPercent = map(rainRaw, 4095, 1000, 0, 100);
-
-  soilPercent = constrain(soilPercent, 0, 100);
-  rainPercent = constrain(rainPercent, 0, 100);
-
-  float humidity = dht.readHumidity();
-  float temperature = dht.readTemperature();
-
-  bool soilDry = soilPercent < SOIL_DRY_LEVEL;
-  bool rainDetected = rainPercent > RAIN_DETECT_LEVEL;
-
-  /* ===== READ MODE ===== */
-  String mode = "AUTO";
-  if (Firebase.getString(fbdo, "/Agri/Mode")) {
-    mode = fbdo.stringData();
-  }
-
-  /* ===== MOTOR CONTROL ===== */
-  if (mode == "MANUAL") {
-
-    if (Firebase.getBool(fbdo, "/Agri/Motor")) {
-      if (fbdo.boolData())
-        digitalWrite(RELAY, RELAY_ON);
-      else
-        digitalWrite(RELAY, RELAY_OFF);
-    }
-
-  } else {  // AUTO MODE
-
-    if (soilDry && !rainDetected)
-      digitalWrite(RELAY, RELAY_ON);
-    else
-      digitalWrite(RELAY, RELAY_OFF);
-  }
-
-  /* ===== BUZZER ===== */
-  if (soilDry || rainDetected)
-    digitalWrite(BUZZER, HIGH);
-  else
-    digitalWrite(BUZZER, LOW);
-
-  /* ===== OLED DISPLAY ===== */
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.printf("Temp: %.1f C\n", temperature);
-  display.printf("Hum : %.1f %%\n", humidity);
-  display.printf("Soil: %.0f %%\n", soilPercent);
-  display.printf("Rain: %.0f %%\n", rainPercent);
-  display.print("Mode: ");
-  display.println(mode);
-  display.print("Motor: ");
-  display.println(digitalRead(RELAY) == RELAY_ON ? "ON" : "OFF");
-  display.display();
-
-  /* ===== FIREBASE UPDATE ===== */
-  Firebase.setFloat(fbdo, "/Agri/Temperature", temperature);
-  Firebase.setFloat(fbdo, "/Agri/Humidity", humidity);
-  Firebase.setFloat(fbdo, "/Agri/SoilMoisture", soilPercent);
-  Firebase.setFloat(fbdo, "/Agri/Rain", rainPercent);
-  Firebase.setBool(fbdo, "/Agri/MotorStatus",
-                   digitalRead(RELAY) == RELAY_ON);
-
-  delay(3000);
+.card {
+  max-width: 380px;
+  margin: auto;
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 12px;
 }
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.on { background: #16a34a; color: white; }
+.off { background: #dc2626; color: white; }
+.auto { background: #2563eb; color: white; }
+.manual { background: #f59e0b; color: black; }
+.status {
+  margin-top: 15px;
+  font-size: 18px;
+}
+.footer {
+  margin-top: 15px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>🌱 Smart Motor Control</h2>
+
+  <button class="auto" onclick="setAuto()">AUTO MODE</button>
+  <button class="manual" onclick="setManual()">MANUAL MODE</button>
+
+  <button class="on" onclick="motorOn()">MOTOR ON</button>
+  <button class="off" onclick="motorOff()">MOTOR OFF</button>
+
+  <div class="status" id="mode">Mode: --</div>
+  <div class="status" id="motor">Motor: --</div>
+
+  <div class="footer">Firebase • ESP32 • GitHub Pages</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+/* 🔥 YOUR FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyAu0IgKzNCYOezaa1VIHlAZqh3ZkWCkU5k",
+  authDomain: "wind-based-agri.firebaseapp.com",
+  databaseURL: "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wind-based-agri",
+  storageBucket: "wind-based-agri.firebasestorage.app",
+  messagingSenderId: "566435113030",
+  appId: "1:566435113030:web:066824a9d5c35e48bc8247"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const motorRef = ref(db, "Agri/Motor");
+const modeRef  = ref(db, "Agri/Mode");
+
+/* ===== BUTTON FUNCTIONS ===== */
+window.motorOn = () => set(motorRef, true);
+window.motorOff = () => set(motorRef, false);
+window.setAuto = () => set(modeRef, "AUTO");
+window.setManual = () => set(modeRef, "MANUAL");
+
+/* ===== LIVE STATUS ===== */
+onValue(motorRef, snap => {
+  document.getElementById("motor").innerText =
+    "Motor: " + (snap.val() ? "ON 🔥" : "OFF ❄️");
+});
+
+onValue(modeRef, snap => {
+  document.getElementById("mode").innerText =
+    "Mode: " + snap.val();
+});
+</script>
+
+</body>
+</html>
