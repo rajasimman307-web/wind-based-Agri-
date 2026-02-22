@@ -1,140 +1,470 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Smart Irrigation Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>AquaFlow • smart irrigation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
 
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: #fff;
-  text-align: center;
-  padding: 15px;
-}
-.card {
-  max-width: 420px;
-  margin: auto;
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 14px;
-}
-h2 {
-  margin-bottom: 10px;
-}
-.sensor {
-  background: #020617;
-  padding: 10px;
-  margin: 6px 0;
-  border-radius: 8px;
-  font-size: 18px;
-}
-button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 8px;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.on { background: #16a34a; color: white; }
-.off { background: #dc2626; color: white; }
-.auto { background: #2563eb; color: white; }
-.manual { background: #f59e0b; color: black; }
+    body {
+      background: linear-gradient(145deg, #0b1622 0%, #132237 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
 
-.status {
-  margin-top: 10px;
-  font-size: 18px;
-}
-.footer {
-  margin-top: 12px;
-  font-size: 13px;
-  opacity: 0.7;
-}
-</style>
+    /* main card – glassmorphism + subtle depth */
+    .dashboard {
+      max-width: 480px;
+      width: 100%;
+      background: rgba(18, 28, 40, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(74, 144, 226, 0.25);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 255, 196, 0.1) inset;
+      border-radius: 42px;
+      padding: 24px 20px 28px 20px;
+      transition: all 0.2s ease;
+    }
+
+    /* header with icon + refined typography */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding-left: 6px;
+    }
+    .header-icon {
+      background: #1e3b4f;
+      width: 48px;
+      height: 48px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 18px rgba(0, 255, 200, 0.2);
+      border: 1px solid #2dd4bf30;
+    }
+    .header-text h1 {
+      font-size: 1.7rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      background: linear-gradient(130deg, #e6f7ff, #b3e5fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.2;
+    }
+    .header-text span {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #8ca3b9;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .header-text span i {
+      font-style: normal;
+      background: #2563eb30;
+      padding: 2px 10px;
+      border-radius: 30px;
+      border: 1px solid #2dd4bf40;
+      color: #9ec8f0;
+    }
+
+    /* sensor grid – clean modern tiles */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .sensor-tile {
+      background: #0e1a26;
+      border-radius: 28px;
+      padding: 18px 8px;
+      border: 1px solid #2c455b;
+      box-shadow: 0 6px 0 #0b111c;
+      transition: transform 0.15s, border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .sensor-tile:hover {
+      border-color: #4fa6c0;
+      transform: translateY(-2px);
+    }
+    .sensor-label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #9ab3cc;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .sensor-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #e1f0fa;
+      line-height: 1.2;
+      text-shadow: 0 2px 5px #00968830;
+    }
+    .sensor-unit {
+      font-size: 0.9rem;
+      color: #6d8eaa;
+      margin-left: 3px;
+      font-weight: 400;
+    }
+
+    /* motor status — special wide tile */
+    .motor-panel {
+      background: #0d1c27;
+      border-radius: 26px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      border: 1px solid #33576e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: inset 0 0 0 1px #1d3f4e, 0 10px 12px -10px #00000080;
+    }
+    .motor-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #c2d9f0;
+    }
+    .motor-label span {
+      background: #254a5e;
+      border-radius: 40px;
+      padding: 5px 10px;
+      font-size: 0.9rem;
+    }
+    .motor-indicator {
+      background: #101f2b;
+      padding: 10px 22px;
+      border-radius: 40px;
+      border: 1px solid #2a5f72;
+      font-weight: 600;
+      font-size: 1.4rem;
+      min-width: 100px;
+      text-align: center;
+      box-shadow: 0 3px 0 #0a1720;
+    }
+    .motor-on {
+      color: #6df0c2;
+      text-shadow: 0 0 8px #00ffbf70;
+    }
+    .motor-off {
+      color: #f99b9b;
+    }
+
+    /* control grid – buttons */
+    .control-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 26px 0 20px;
+    }
+    .btn {
+      flex: 1 1 calc(50% - 8px);
+      min-width: 140px;
+      border: none;
+      padding: 16px 8px;
+      border-radius: 44px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: 0.3px;
+      background: #1f3445;
+      color: #e1eefb;
+      cursor: pointer;
+      transition: 0.15s;
+      box-shadow: 0 6px 0 #0c1a24, 0 4px 12px #00000050;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #3e5e77;
+    }
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #0c1a24;
+    }
+    .btn-auto {
+      background: #0b3955;
+      border-color: #3b9ac6;
+      color: white;
+      box-shadow: 0 6px 0 #06222f;
+    }
+    .btn-manual {
+      background: #7b5d3a;
+      border-color: #e5b87b;
+      color: #ffeac2;
+      box-shadow: 0 6px 0 #4e3c25;
+    }
+    .btn-on {
+      background: #1b5e3f;
+      border-color: #5dca88;
+      box-shadow: 0 6px 0 #0b321f;
+    }
+    .btn-off {
+      background: #832e2e;
+      border-color: #f28b8b;
+      box-shadow: 0 6px 0 #4f1c1c;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      transform: none;
+      pointer-events: none;
+    }
+
+    /* mode indicator */
+    .mode-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0c1b27b0;
+      border-radius: 60px;
+      padding: 12px 20px;
+      border: 1px solid #2b5066;
+      backdrop-filter: blur(4px);
+      margin-top: 8px;
+    }
+    .mode-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .mode-led {
+      width: 14px;
+      height: 14px;
+      border-radius: 14px;
+      background: #3b82f6;
+      box-shadow: 0 0 12px #3b82f6;
+    }
+    .mode-led.auto-led { background: #26c6da; box-shadow: 0 0 12px #4dd0e1; }
+    .mode-led.manual-led { background: #ffb74d; box-shadow: 0 0 12px #ffb74d; }
+    #mode {
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #d5e9ff;
+    }
+    .version {
+      font-size: 0.7rem;
+      color: #6086a8;
+      background: #14293a;
+      padding: 4px 12px;
+      border-radius: 50px;
+    }
+
+    /* small footer */
+    .hardware-badge {
+      margin-top: 16px;
+      color: #54738f;
+      font-size: 0.75rem;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      border-top: 1px dashed #2f4d64;
+      padding-top: 14px;
+    }
+
+    /* mobile tiny */
+    @media (max-width: 400px) {
+      .sensor-value { font-size: 1.8rem; }
+      .btn { font-size: 1rem; padding: 14px 4px; }
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="card">
-  <h2>🌱 Smart Irrigation System</h2>
+<div class="dashboard">
+  <div class="header">
+    <div class="header-icon">💧</div>
+    <div class="header-text">
+      <h1>AquaFlow IQ</h1>
+      <span><i>smart irrigation</i> ⚡ live</span>
+    </div>
+  </div>
 
-  <!-- SENSOR DATA -->
-  <div class="sensor">🌡 Temp: <span id="temp">--</span> °C</div>
-  <div class="sensor">💧 Humidity: <span id="hum">--</span> %</div>
-  <div class="sensor">🌱 Soil: <span id="soil">--</span> %</div>
-  <div class="sensor">🌧 Rain: <span id="rain">--</span> %</div>
-  <div class="sensor">⚡ Motor: <span id="motorStatus">--</span></div>
+  <!-- SENSOR TILES (4 values) -->
+  <div class="sensor-grid">
+    <div class="sensor-tile">
+      <div class="sensor-label">🌡️ Temp</div>
+      <div class="sensor-value"><span id="temp">--</span><span class="sensor-unit">°C</span></div>
+    </div>
+    <div class="sensor-tile">
+      <div class="sensor-label">💧 Humidity</div>
+      <div class="sensor-value"><span id="hum">--</span><span class="sensor-unit">%</span></div>
+    </div>
+    <div class="sensor-tile">
+      <div class="sensor-label">🌱 Soil</div>
+      <div class="sensor-value"><span id="soil">--</span><span class="sensor-unit">%</span></div>
+    </div>
+    <div class="sensor-tile">
+      <div class="sensor-label">🌧️ Rain</div>
+      <div class="sensor-value"><span id="rain">--</span><span class="sensor-unit">%</span></div>
+    </div>
+  </div>
 
-  <!-- CONTROLS -->
-  <button class="auto" onclick="setAuto()">AUTO MODE</button>
-  <button class="manual" onclick="setManual()">MANUAL MODE</button>
+  <!-- MOTOR STATUS CARD (combined) -->
+  <div class="motor-panel">
+    <div class="motor-label">
+      ⚙️ Motor <span>actuator</span>
+    </div>
+    <div class="motor-indicator" id="motorStatusBox">--</div>
+  </div>
 
-  <button class="on" onclick="motorOn()">MOTOR ON</button>
-  <button class="off" onclick="motorOff()">MOTOR OFF</button>
+  <!-- CONTROL BUTTONS (two rows) -->
+  <div class="control-grid">
+    <button class="btn btn-auto" id="autoBtn">🤖 AUTO MODE</button>
+    <button class="btn btn-manual" id="manualBtn">🔧 MANUAL MODE</button>
+    <button class="btn btn-on" id="motorOnBtn">⏺️ MOTOR ON</button>
+    <button class="btn btn-off" id="motorOffBtn">⏹️ MOTOR OFF</button>
+  </div>
 
-  <div class="status" id="mode">Mode: --</div>
+  <!-- MODE + STATUS -->
+  <div class="mode-footer">
+    <div class="mode-badge">
+      <span class="mode-led" id="modeLed"></span>
+      <span id="mode">Mode: --</span>
+    </div>
+    <span class="version">ESP32 • firebase</span>
+  </div>
 
-  <div class="footer">ESP32 • Firebase • GitHub Pages</div>
+  <div class="hardware-badge">
+    <span>📡 realtime</span>
+    <span>🔋 low latency</span>
+    <span>⚡ 2025</span>
+  </div>
 </div>
 
+<!-- FIREBASE MODULE SCRIPT -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
 
-/* 🔥 YOUR FIREBASE CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyAu0IgKzNCYOezaa1VIHlAZqh3ZkWCkU5k",
-  authDomain: "wind-based-agri.firebaseapp.com",
-  databaseURL: "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "wind-based-agri",
-  storageBucket: "wind-based-agri.firebasestorage.app",
-  messagingSenderId: "566435113030",
-  appId: "1:566435113030:web:066824a9d5c35e48bc8247"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyAu0IgKzNCYOezaa1VIHlAZqh3ZkWCkU5k",
+    authDomain: "wind-based-agri.firebaseapp.com",
+    databaseURL: "https://wind-based-agri-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "wind-based-agri",
+    storageBucket: "wind-based-agri.firebasestorage.app",
+    messagingSenderId: "566435113030",
+    appId: "1:566435113030:web:066824a9d5c35e48bc8247"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-/* ===== REFERENCES ===== */
-const tempRef  = ref(db, "Agri/Temperature");
-const humRef   = ref(db, "Agri/Humidity");
-const soilRef  = ref(db, "Agri/SoilMoisture");
-const rainRef  = ref(db, "Agri/Rain");
-const motorRef = ref(db, "Agri/Motor");
-const modeRef  = ref(db, "Agri/Mode");
-const motorStatusRef = ref(db, "Agri/MotorStatus");
+  /* references */
+  const tempRef      = ref(db, "Agri/Temperature");
+  const humRef       = ref(db, "Agri/Humidity");
+  const soilRef      = ref(db, "Agri/SoilMoisture");
+  const rainRef      = ref(db, "Agri/Rain");
+  const motorRef     = ref(db, "Agri/Motor");          // control (write true/false)
+  const modeRef      = ref(db, "Agri/Mode");           // "AUTO"/"MANUAL"
+  const motorStatusRef = ref(db, "Agri/MotorStatus");  // actual state ON/OFF (boolean)
 
-/* ===== BUTTON FUNCTIONS ===== */
-window.motorOn  = () => set(motorRef, true);
-window.motorOff = () => set(motorRef, false);
-window.setAuto  = () => set(modeRef, "AUTO");
-window.setManual = () => set(modeRef, "MANUAL");
+  /* DOM elements */
+  const tempEl      = document.getElementById("temp");
+  const humEl       = document.getElementById("hum");
+  const soilEl      = document.getElementById("soil");
+  const rainEl      = document.getElementById("rain");
+  const motorStatusBox = document.getElementById("motorStatusBox");
+  const modeEl      = document.getElementById("mode");
+  const modeLed     = document.getElementById("modeLed");
 
-/* ===== LIVE DATA ===== */
-onValue(tempRef, snap => {
-  document.getElementById("temp").innerText = snap.val()?.toFixed(1) ?? "--";
-});
-onValue(humRef, snap => {
-  document.getElementById("hum").innerText = snap.val()?.toFixed(1) ?? "--";
-});
-onValue(soilRef, snap => {
-  document.getElementById("soil").innerText = snap.val()?.toFixed(0) ?? "--";
-});
-onValue(rainRef, snap => {
-  document.getElementById("rain").innerText = snap.val()?.toFixed(0) ?? "--";
-});
-onValue(motorStatusRef, snap => {
-  document.getElementById("motorStatus").innerText =
-    snap.val() ? "ON 🔥" : "OFF ❄️";
-});
-onValue(modeRef, snap => {
-  document.getElementById("mode").innerText =
-    "Mode: " + snap.val();
-});
+  /* helper to update motor indicator style */
+  function updateMotorUI(status) {
+    if (status === true) {
+      motorStatusBox.innerText = "ON 🔥";
+      motorStatusBox.classList.add('motor-on');
+      motorStatusBox.classList.remove('motor-off');
+    } else if (status === false) {
+      motorStatusBox.innerText = "OFF ❄️";
+      motorStatusBox.classList.add('motor-off');
+      motorStatusBox.classList.remove('motor-on');
+    } else {
+      motorStatusBox.innerText = "--";
+    }
+  }
+
+  /* live sensor listeners */
+  onValue(tempRef, (snap) => {
+    const val = snap.val();
+    tempEl.innerText = (val !== null && val !== undefined) ? val.toFixed(1) : "--";
+  });
+  onValue(humRef, (snap) => {
+    const val = snap.val();
+    humEl.innerText = (val !== null && val !== undefined) ? val.toFixed(1) : "--";
+  });
+  onValue(soilRef, (snap) => {
+    const val = snap.val();
+    soilEl.innerText = (val !== null && val !== undefined) ? val.toFixed(0) : "--";
+  });
+  onValue(rainRef, (snap) => {
+    const val = snap.val();
+    rainEl.innerText = (val !== null && val !== undefined) ? val.toFixed(0) : "--";
+  });
+
+  /* motor status (actual state) */
+  onValue(motorStatusRef, (snap) => {
+    const status = snap.val();
+    updateMotorUI(status);
+  });
+
+  /* mode + led indicator */
+  onValue(modeRef, (snap) => {
+    const mode = snap.val() || "AUTO";
+    modeEl.innerText = "Mode: " + mode;
+    if (mode === "AUTO") {
+      modeLed.className = "mode-led auto-led";
+    } else if (mode === "MANUAL") {
+      modeLed.className = "mode-led manual-led";
+    } else {
+      modeLed.className = "mode-led";
+    }
+  });
+
+  /* ----- BUTTON CONTROLS (write to Firebase) ----- */
+  document.getElementById("autoBtn").addEventListener("click", () => {
+    set(modeRef, "AUTO").catch(console.error);
+  });
+  document.getElementById("manualBtn").addEventListener("click", () => {
+    set(modeRef, "MANUAL").catch(console.error);
+  });
+  document.getElementById("motorOnBtn").addEventListener("click", () => {
+    set(motorRef, true).catch(console.error);   // command motor ON
+  });
+  document.getElementById("motorOffBtn").addEventListener("click", () => {
+    set(motorRef, false).catch(console.error);  // command motor OFF
+  });
+
+  // fallback initial read for motor (already handled by onValue)
+  // optional: set default if null? no needed.
+
+  console.log("✅ Dashboard connected with professional theme");
 </script>
 
+<!-- ensure motor status box fallback if no value (styling) -->
+<noscript>JavaScript required for realtime updates</noscript>
 </body>
 </html>
